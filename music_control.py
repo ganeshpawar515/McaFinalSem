@@ -48,7 +48,7 @@ def run():
 
     # MediaPipe setup
     mp_hands = mp.solutions.hands
-    hands = mp_hands.Hands(max_num_hands=2, min_detection_confidence=0.7)
+    hands = mp_hands.Hands(max_num_hands=1, min_detection_confidence=0.7)
     mp_draw = mp.solutions.drawing_utils
     tip_ids = [4, 8, 12, 16, 20]
 
@@ -72,6 +72,15 @@ def run():
         if result.multi_hand_landmarks and result.multi_handedness:
             for idx, hand_handedness in enumerate(result.multi_handedness):
                 label = hand_handedness.classification[0].label
+                '''result.multi_handedness
+                [ classification {
+                    index: 0
+                    score: 0.9987
+                    label: "Right"
+                    display_name: "Right"
+                } ]
+
+                '''
                 landmarks = result.multi_hand_landmarks[idx]
                 lm_list = []
 
@@ -96,13 +105,22 @@ def run():
 
             cv2.putText(img, f'Fingers: {total}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
 
-            # Exit gesture: fist (0 fingers)
+           
             if total == 0:
-                cv2.putText(img, "Returning to menu...", (10, 450), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
-                cv2.imshow("Gesture Music Controller", img)
-                cv2.waitKey(1000)
-                stop_music()
-                break
+                if last_gesture != "Fist":
+                    fist_start_time = time.time()
+                    last_gesture = "Fist"
+                elif time.time() - fist_start_time >= 5:
+                    cv2.putText(img, "Exiting in 5s...", (10, 450), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
+                    stop_music()
+                    break
+                else:
+                    remaining = 5 - int(time.time() - fist_start_time)
+                    cv2.putText(img, f"Hold fist to exit: {remaining}s", (10, 450), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+            else:
+                if last_gesture == "Fist":
+                    last_gesture = ""  # Reset if gesture changes
+
 
             if time.time() - last_action_time > 2:
                 if total == 1:
